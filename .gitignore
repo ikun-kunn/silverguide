@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.qoder/
+.workbuddy/
+docs/m0-ai-verification.json

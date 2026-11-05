@@ -1,0 +1,41 @@
+{
+  "name": "silverguide",
+  "version": "0.2.0-m1",
+  "private": true,
+  "type": "module",
+  "description": "SilverGuide 银龄引路人 — M1 基础产品",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:secrets": "node scripts/check-no-secrets.mjs",
+    "verify:ai": "node scripts/verify-cloud-agents.mjs",
+    "verify": "npm run typecheck && npm run test && npm run build && npm run verify:secrets"
+  },
+  "dependencies": {
+    "dexie": "^4.4.7",
+    "pinia": "^2.3.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/test-utils": "^2.4.6",
+    "autoprefixer": "^10.4.20",
+    "fake-indexeddb": "^6.2.7",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^3.2.7",
+    "vue-tsc": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

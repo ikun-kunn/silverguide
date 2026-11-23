@@ -1,12 +1,12 @@
-import { VISION_ERROR_CODES } from '@/types/vision';
+import { VISION_ERROR_CODES } from '../types/vision';
 import type {
   AnalysisStatus,
   BoundingBox,
   ScreenshotAnalysis,
   VisionErrorCode,
-} from '@/types/vision';
-import { isNormalizedBoundingBox } from '@/utils/coordinates';
-import { createId } from '@/utils/id';
+} from '../types/vision';
+import { isNormalizedBoundingBox } from '../utils/coordinates';
+import { createId } from '../utils/id';
 
 /**
  * TRD §5.3 aiResponseValidator / §7.2 输出校验 / §7.3-8 / §FR-202。
@@ -20,6 +20,28 @@ export const MAX_TEXT_LENGTH = 1000;
 
 export const INVALID_OUTPUT_MESSAGE =
   'AI 服务暂时无法给出可靠的指引，请稍后重试。模拟训练仍可正常使用。';
+
+export const SENSITIVE_VISION_SUMMARY = '此内容可能涉及敏感业务或个人凭据。';
+export const SENSITIVE_VISION_INSTRUCTION = '请暂停操作，向可信家人或官方服务人员核实，不要仅凭 AI 建议办理。';
+export const SENSITIVE_VISION_WARNING = '不要透露密码、验证码、银行卡密码或直接进行付款、转账、授权。';
+
+/** 保守的本地规则不是完整语义识别；明确风险或模型自报风险一律仅允许固定安全提示。 */
+export function hasSensitiveVisionContent(...values: (string | null | undefined)[]): boolean {
+  return values.some(value => typeof value === 'string' && /支付|付款|转账|汇款|收款码|银行卡|验证码|密码|授权|绑定账号|人脸验证|刷脸|提现|充值|借贷|贷款|投资|金融|payment|transfer|password|verification\s*code|authorization|bank\s*card/iu.test(value.normalize('NFKC')));
+}
+
+export function sensitiveVisionAnalysis(id = createId('analysis')): ScreenshotAnalysis {
+  return { id, status: 'uncertain', pageSummary: SENSITIVE_VISION_SUMMARY, instruction: SENSITIVE_VISION_INSTRUCTION,
+    targetLabel: null, boundingBox: null, confidence: null, safetyWarning: SENSITIVE_VISION_WARNING };
+}
+
+export function guardVisionAnalysis(analysis: ScreenshotAnalysis, ...context: (string | null | undefined)[]): ScreenshotAnalysis {
+  if (analysis.status === 'failed') return analysis;
+  if (analysis.safetyWarning?.trim() || hasSensitiveVisionContent(...context, analysis.pageSummary, analysis.instruction, analysis.targetLabel)) {
+    return sensitiveVisionAnalysis(analysis.id);
+  }
+  return analysis;
+}
 
 export interface ValidationResult {
   ok: boolean;
@@ -107,7 +129,7 @@ function readBoundingBox(value: unknown, warnings: string[]): BoundingBox | null
   return value;
 }
 
-export function validateVisionResponse(raw: unknown): ValidationResult {
+export function validateVisionResponse(raw: unknown, ...context: (string | null | undefined)[]): ValidationResult {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return failed(INVALID_OUTPUT_MESSAGE, ['响应必须是 JSON 对象'], 'INVALID_MODEL_OUTPUT');
   }
@@ -150,7 +172,7 @@ export function validateVisionResponse(raw: unknown): ValidationResult {
     status,
   };
 
-  return { ok: true, analysis, issues: [], warnings, errorCode: null };
+  return { ok: true, analysis: guardVisionAnalysis(analysis, ...context), issues: [], warnings, errorCode: null };
 }
 
 /** 模型返回的文本需先按严格 JSON Schema 解析，解析失败不得当作可信指引 */

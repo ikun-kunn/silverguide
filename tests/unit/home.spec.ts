@@ -13,6 +13,8 @@ function mountHome() {
     routes: [
       { path: '/', component: HomeView },
       { path: '/practice', component: { template: '<p>训练中心</p>' } },
+      { path: '/ai-helper', component: { template: '<p>AI 看图指导</p>' } },
+      { path: '/about', component: { template: '<p>关于</p>' } },
     ],
   });
   const wrapper = mount(HomeView, { global: { plugins: [pinia, router] } });
@@ -62,13 +64,12 @@ describe('M1 首页、导航与适老化设置（TRD §3.1 / §4.2）', () => {
     expect(mountHome().wrapper.find('[data-testid="first-visit-guide"]').exists()).toBe(false);
   });
 
-  it('AI 入口明确标记服务暂不可用，不用固定结果冒充 AI', async () => {
-    const { wrapper } = mountHome();
-    expect(wrapper.text()).toContain('AI 服务暂不可用');
+  it('AI 入口打开看图助手', async () => {
+    const { wrapper, router } = mountHome();
     const aiButton = wrapper.findAll('button').find((button) => button.text().includes('AI 看图指导'));
     await aiButton?.trigger('click');
-    expect(wrapper.get('[data-testid="notice"]').text()).toContain('AI 服务暂不可用');
-    expect(wrapper.get('[data-testid="notice"]').text()).toContain('模拟训练');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/ai-helper');
   });
 
   it('文字大小设置真实改变根字号，并可持久化', async () => {
@@ -81,9 +82,9 @@ describe('M1 首页、导航与适老化设置（TRD §3.1 / §4.2）', () => {
     expect(window.localStorage.getItem('silverguide.settings.m0')).toContain('1.35');
   });
 
-  it('语音播报开关可切换并保存偏好，但不宣称 M1 已接入语音', async () => {
+  it('语音播报开关可切换并保存偏好', async () => {
     const { wrapper } = mountHome();
-    expect(wrapper.text()).toContain('M2 阶段接入');
+    expect(wrapper.text()).toContain('朗读说明');
     const toggle = wrapper.findAll('button').find((button) => button.attributes('role') === 'switch');
     expect(toggle?.attributes('aria-checked')).toBe('true');
     await toggle?.trigger('click');

@@ -8,6 +8,7 @@ import type {
   VisionErrorCode,
 } from '@/types/vision';
 import { createId } from '@/utils/id';
+import { warnDiagnostic } from '@/utils/diagnostics';
 
 /**
  * TRD §5.2：浏览器只访问同源 /api/vision/analyze，由受保护的服务端适配层
@@ -59,14 +60,16 @@ function mapHttpStatus(status: number): VisionErrorCode {
   if (status === 413) return 'FILE_TOO_LARGE';
   if (status === 415) return 'UNSUPPORTED_MEDIA_TYPE';
   if (status === 429) return 'RATE_LIMITED';
-  if (status === 502 || status === 503 || status === 504) return 'AI_UNAVAILABLE';
+  if (status === 504) return 'AI_TIMEOUT';
+  if (status === 502 || status === 503) return 'AI_UNAVAILABLE';
   return 'UNKNOWN';
 }
 
 /** TRD §3.5：未输入问题时，要求先解释界面主要功能 */
 export function resolveQuestion(question: string): string {
-  return question.trim().length > 0
-    ? question
+  const trimmed = question.trim();
+  return trimmed.length > 0
+    ? trimmed
     : '请先用一两句话说明这个页面的主要功能，暂时不要给出操作步骤。';
 }
 
@@ -74,6 +77,8 @@ export async function analyzeScreenshot(
   request: VisionAnalyzeRequest,
   options: VisionClientOptions = {},
 ): Promise<VisionAnalysisOutcome> {
+  // 已取消的操作不创建请求、计时器或上传内容。
+  if (options.signal?.aborted) return failed('NETWORK_ERROR');
   const precheck = checkImageFile(request.image);
   if (!precheck.ok) {
     return failed(precheck.code ?? 'INVALID_REQUEST');
@@ -87,10 +92,7 @@ export async function analyzeScreenshot(
   }
 
   const form = new FormData();
-  const filename =
-    typeof File !== 'undefined' && request.image instanceof File && request.image.name
-      ? request.image.name
-      : `screenshot.${extensionFor(request.image.type)}`;
+  const filename = `screenshot.${extensionFor(request.image.type)}`;
   form.append('image', request.image, filename);
   form.append('question', resolveQuestion(request.question));
   if (request.taskContext !== undefined && request.taskContext !== '') {
@@ -100,39 +102,60 @@ export async function analyzeScreenshot(
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
+    if (controller.signal.aborted) return;
     timedOut = true;
     controller.abort();
   }, timeoutMs);
   const abortFromCaller = (): void => controller.abort();
   options.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  if (options.signal?.aborted) controller.abort();
+  const stopped = (): VisionAnalysisOutcome => failed(timedOut ? 'AI_TIMEOUT' : 'NETWORK_ERROR');
 
   try {
+    if (controller.signal.aborted) return stopped();
     const response = await fetchImpl(endpoint, {
       method: 'POST',
       body: form,
       credentials: 'same-origin',
       signal: controller.signal,
     });
+    if (controller.signal.aborted) return stopped();
 
     if (!response.ok) {
+      try {
+        const raw: unknown = await response.json();
+        if (controller.signal.aborted) return stopped();
+        if (typeof raw === 'object' && raw !== null && 'success' in raw && raw.success === false) {
+          const validation = validateVisionResponse(raw);
+          if (validation.errorCode) return failed(validation.errorCode);
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return stopped();
+        warnDiagnostic('vision.errorResponse', error);
+        // 静态站点或网关可能返回 HTML，继续使用标准 HTTP 状态。
+      }
       return failed(mapHttpStatus(response.status));
     }
+    if (response.headers?.get('content-type')?.includes('text/html')) return failed('NOT_CONFIGURED');
 
     let raw: unknown;
     try {
       raw = (await response.json()) as unknown;
-    } catch {
+    } catch (error) {
+      if (controller.signal.aborted) return stopped();
+      warnDiagnostic('vision.responseJson', error);
       return failed('INVALID_MODEL_OUTPUT');
     }
+    if (controller.signal.aborted) return stopped();
 
-    const validation = validateVisionResponse(raw);
+    const validation = validateVisionResponse(raw, request.question, request.taskContext);
     if (!validation.ok) {
       return failed(validation.errorCode ?? 'INVALID_MODEL_OUTPUT');
     }
     return { analysis: validation.analysis, errorCode: null, degraded: false };
-  } catch {
-    if (timedOut) return failed('AI_TIMEOUT');
-    if (options.signal?.aborted) return failed('NETWORK_ERROR');
+  } catch (error) {
+    if (controller.signal.aborted) return stopped();
+    warnDiagnostic('vision.fetch', error);
     return failed('NETWORK_ERROR');
   } finally {
     clearTimeout(timer);

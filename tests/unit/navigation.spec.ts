@@ -12,6 +12,8 @@ describe('M1 基础导航与路由', () => {
     expect(router.resolve('/practice/taxi-ride').name).toBe('training');
     expect(router.resolve('/progress').name).toBe('progress');
     expect(router.resolve('/settings').name).toBe('settings');
+    expect(router.resolve('/ai-helper').name).toBe('ai-helper');
+    expect(router.resolve('/about').name).toBe('about');
     expect(router.resolve('/not-a-page').redirectedFrom).toBeUndefined();
     expect(router.getRoutes().some((route) => route.path === '/:pathMatch(.*)*')).toBe(true);
   });
@@ -24,15 +26,16 @@ describe('M1 基础导航与路由', () => {
         { path: '/practice', component: { template: '<div />' } },
         { path: '/progress', component: { template: '<div />' } },
         { path: '/settings', component: { template: '<div />' } },
+        { path: '/ai-helper', component: { template: '<div />' } },
       ],
     });
     const wrapper = mount(AppHeader, { global: { plugins: [testRouter] } });
     const links = wrapper.findAll('a');
     expect(links.map((link) => link.text())).toEqual(
-      expect.arrayContaining(['银龄引路人', '首页', '模拟训练', '学习档案', '设置']),
+      expect.arrayContaining(['银龄引路人', '首页', '模拟训练', '学习档案', '设置', 'AI 看图']),
     );
     expect(links.map((link) => link.attributes('href'))).toEqual(
-      expect.arrayContaining(['/', '/practice', '/progress', '/settings']),
+      expect.arrayContaining(['/', '/practice', '/progress', '/settings', '/ai-helper']),
     );
   });
 });

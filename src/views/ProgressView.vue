@@ -1,30 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AppButton from '@/components/AppButton.vue';
+import ClearRecordsControl from '@/components/ClearRecordsControl.vue';
 import { usePracticeStore } from '@/stores/practice';
 import { getTaskById } from '@/tasks';
 import { formatDateTime, formatDuration } from '@/utils/format';
 
 const router = useRouter();
 const practice = usePracticeStore();
-const clearMessage = ref('');
 
 onMounted(() => {
   void practice.loadRecords();
 });
 
 const completedCount = computed(
-  () => practice.records.filter((record) => record.snapshot.session.status === 'completed').length,
+  () => practice.records.filter((record) => record.snapshot?.session.status === 'completed').length,
 );
 const activeCount = computed(
-  () => practice.records.filter((record) => record.snapshot.session.status === 'active').length,
+  () => practice.records.filter((record) => record.snapshot?.session.status === 'active').length,
 );
 
-async function clearRecords(): Promise<void> {
-  const success = await practice.clearRecords();
-  clearMessage.value = success ? '本机学习记录已全部清除。' : '清除失败，请稍后重试。';
-}
 </script>
 
 <template>
@@ -46,11 +42,11 @@ async function clearRecords(): Promise<void> {
     </section>
 
     <p
-      v-if="practice.persistenceWarning || clearMessage"
+      v-if="practice.persistenceWarning"
       role="status"
       class="mb-4 rounded-xl border-2 border-sg-border bg-sg-surface p-3"
     >
-      {{ clearMessage || practice.persistenceWarning }}
+      {{ practice.persistenceWarning }}
     </p>
 
     <section v-if="practice.records.length" aria-labelledby="history-title">
@@ -68,30 +64,24 @@ async function clearRecords(): Promise<void> {
               <p class="text-[0.85rem] text-sg-muted">最近操作：{{ formatDateTime(record.updatedAt) }}</p>
             </div>
             <span class="rounded-lg bg-sg-bg px-2 py-1 text-[0.85rem] font-semibold">
-              {{ record.snapshot.session.status === 'completed' ? '已完成' : record.snapshot.session.status === 'active' ? '进行中' : '已退出' }}
+              {{ !record.snapshot ? '记录不兼容' : record.snapshot.session.status === 'completed' ? '已完成' : record.snapshot.session.status === 'active' ? '进行中' : '已退出' }}
             </span>
           </div>
-          <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[0.9rem]">
+          <dl v-if="record.snapshot" class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[0.9rem]">
             <div><dt class="inline text-sg-muted">用时：</dt><dd class="inline">{{ formatDuration(record.startedAt, record.snapshot.session.completedAt) }}</dd></div>
             <div><dt class="inline text-sg-muted">错误：</dt><dd class="inline">{{ record.snapshot.session.errorCount }} 次</dd></div>
             <div><dt class="inline text-sg-muted">求助：</dt><dd class="inline">{{ record.snapshot.session.helpCount }} 次</dd></div>
             <div><dt class="inline text-sg-muted">提示：</dt><dd class="inline">L{{ record.snapshot.session.currentHintLevel }}</dd></div>
           </dl>
+          <p v-else class="mt-3 text-sg-muted">这条记录暂时无法读取，原始记录仍保留。您可以重新练习，也可以清除学习记录。</p>
         </li>
       </ol>
-      <button
-        type="button"
-        class="mt-5 min-h-tap w-full rounded-xl border-2 border-sg-warn bg-sg-surface px-4 py-3 font-semibold text-sg-warn"
-        @click="clearRecords"
-      >
-        清除本机学习记录
-      </button>
     </section>
-
     <section v-else class="rounded-2xl border-2 border-sg-border bg-sg-surface p-5 text-center">
       <h2 class="font-bold">还没有练习记录</h2>
       <p class="my-3 text-sg-muted">完成一次挂号或打车训练后，结果会显示在这里。</p>
       <AppButton label="去开始第一次练习" @activate="router.push('/practice')" />
     </section>
+    <ClearRecordsControl class="mt-5" label="清除本机学习记录" :can-clear="practice.records.length > 0" />
   </main>
 </template>

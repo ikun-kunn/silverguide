@@ -38,4 +38,23 @@ describe('M1 训练中心', () => {
     expect(wrapper.text()).toContain('上次练习可继续');
     expect(wrapper.text()).toContain('继续练习');
   });
+
+  it('只有旧任务版本的 active 记录时不显示继续练习', async () => {
+    const practice = usePracticeStore();
+    await practice.loadTask('hospital-registration');
+    // 将记录改为旧版本，模拟任务升级后的历史 active 存档。
+    const records = await progressRepository.list();
+    const generation = await progressRepository.getGeneration();
+    for (const record of records) {
+      if (!record.snapshot) continue;
+      await progressRepository.save(record.snapshot, record.taskVersion + 1, record.updatedAt, generation);
+    }
+    // 刷新 store 中的档案列表，使其反映刚写入的旧版本记录。
+    await practice.loadRecords();
+    const wrapper = mount(PracticeView);
+    await flushPromises();
+    // 当前版本无匹配 active 记录，应显示尚未开始而非继续。
+    const statuses = wrapper.findAll('[data-testid="task-status"]');
+    expect(statuses[0]?.text()).not.toContain('继续');
+  });
 });

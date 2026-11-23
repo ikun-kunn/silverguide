@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import type { Pinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TrainingView from '@/views/TrainingView.vue';
 import ProgressView from '@/views/ProgressView.vue';
 import { DEMO_TASKS, getTaskById } from '@/tasks';
@@ -46,6 +46,8 @@ async function completeCurrentTask(taskId: string) {
   }
   expect(store.snapshot?.session.status).toBe('completed');
   expect(wrapper.get('[data-testid="practice-result"]').text()).toContain('本次练习完成');
+  // DOM 点击立即推进会话，真正持久化由串行队列完成；档案读取是明确的提交屏障。
+  await store.loadRecords();
   return { wrapper, store };
 }
 
@@ -56,6 +58,11 @@ beforeEach(async () => {
   await progressRepository.clear();
   pinia = createPinia();
   setActivePinia(pinia);
+});
+
+afterEach(async () => {
+  // 防止上个用例尚未提交的 IndexedDB 写入越过下个用例的数据库清理。
+  await usePracticeStore(pinia).loadRecords();
 });
 
 describe('M1 完整训练路径与进度状态', () => {
@@ -76,7 +83,7 @@ describe('M1 完整训练路径与进度状态', () => {
 
     const records = await progressRepository.list();
     expect(records).toHaveLength(1);
-    expect(records[0]?.snapshot.session.status).toBe('completed');
+    expect(records[0]?.snapshot?.session.status).toBe('completed');
 
     mount(ProgressView, { global: { plugins: [pinia] } });
     await flushPromises();
@@ -179,5 +186,77 @@ describe('M1 完整训练路径与进度状态', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     await completeCurrentTask('hospital-registration');
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('训练视图路由参数快速切换时标题、组件、步骤始终使用同一最新任务', async () => {
+    let resolveOld!: (value: null) => void;
+    const read = vi.spyOn(progressRepository, 'getLatestActive').mockReturnValueOnce(new Promise<null>((resolve) => { resolveOld = resolve; }));
+    const wrapper = mount(TrainingView, { props: { taskId: 'hospital-registration' }, global: { plugins: [pinia] } });
+    await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
+    await wrapper.setProps({ taskId: 'taxi-ride' });
+    await vi.waitFor(() => expect(wrapper.find('#taxi-home-entry').exists()).toBe(true));
+    resolveOld(null); await flushPromises();
+    expect(wrapper.get('h1').text()).toContain('模拟手机打车');
+    expect(wrapper.find('#hospital-home-entry').exists()).toBe(false);
+    expect(usePracticeStore().snapshot?.session.taskId).toBe('taxi-ride');
+    wrapper.unmount();
+  });
+
+  it('L2、L3 的显式求助呈现简短线索，L1 才显示详细线索和高亮', async () => {
+    const wrapper = await mountTraining('hospital-registration');
+    const store = usePracticeStore(); const step = getTaskById('hospital-registration')!.steps[0]!;
+    for (const level of [2, 3] as const) {
+      await store.setHintLevel(level); await store.requestHelp(); await flushPromises();
+      expect(wrapper.get('[data-testid="guidance"]').text()).toContain(step.hints[1]);
+      expect(wrapper.get('[data-testid="action-feedback"]').text()).toBe(step.hints[1]);
+      expect(wrapper.get('#hospital-home-entry').classes()).not.toContain('ring-4');
+    }
+    await store.setHintLevel(1); await store.requestHelp(); await flushPromises();
+    expect(wrapper.get('[data-testid="guidance"]').text()).toContain(step.hints[0]);
+    expect(wrapper.get('#hospital-home-entry').classes()).toContain('ring-4');
+    wrapper.unmount();
+  });
+
+  it('学习档案页首次点击清除不删除，取消保留，确认才清除', async () => {
+    await completeCurrentTask('taxi-ride');
+    const wrapper = mount(ProgressView, { global: { plugins: [pinia] } });
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="progress-record"]').exists()).toBe(true));
+    await wrapper.findAll('button').find(b => b.text() === '清除本机学习记录')?.trigger('click');
+    expect(await progressRepository.list()).toHaveLength(1);
+    expect(wrapper.text()).toContain('清除后无法恢复');
+    await wrapper.findAll('button').find(b => b.text() === '取消，保留记录')?.trigger('click');
+    expect(await progressRepository.list()).toHaveLength(1);
+    await wrapper.findAll('button').find(b => b.text() === '清除本机学习记录')?.trigger('click');
+    await wrapper.get('[data-testid="confirm-clear-records"]').trigger('click');
+    await vi.waitFor(() => expect(wrapper.text()).toContain('学习记录已清除'));
+    expect(await progressRepository.list()).toEqual([]);
+    wrapper.unmount();
+  });
+
+  it('退出保存期间离开训练页面，不覆盖后续导航', async () => {
+    const wrapper = await mountTraining('hospital-registration');
+    let release!: () => void;
+    const save = progressRepository.save.bind(progressRepository);
+    const blocked = vi.spyOn(progressRepository, 'save').mockImplementationOnce(async (...args) => {
+      await new Promise<void>(resolve => { release = resolve; });
+      return save(...args);
+    });
+    await wrapper.findAll('button').find(button => button.text() === '退出练习')?.trigger('click');
+    await vi.waitFor(() => expect(blocked).toHaveBeenCalled());
+    wrapper.unmount();
+    release();
+    await usePracticeStore().loadRecords();
+    expect(routerPush).not.toHaveBeenCalled();
+  });
+
+  it('不兼容档案安全展示，用户仍可清除', async () => {
+    const invalid = { id: 'old-incompatible', taskId: 'hospital-registration', taskVersion: 1,
+      startedAt: '', updatedAt: '', snapshot: null };
+    vi.spyOn(progressRepository, 'list').mockResolvedValueOnce([invalid]);
+    const wrapper = mount(ProgressView, { global: { plugins: [pinia] } });
+    await vi.waitFor(() => expect(wrapper.text()).toContain('记录不兼容'));
+    expect(wrapper.text()).toContain('原始记录仍保留');
+    expect(wrapper.findAll('button').some(button => button.text() === '清除本机学习记录')).toBe(true);
+    wrapper.unmount();
   });
 });

@@ -1,0 +1,242 @@
+[
+  {
+    "id": "01",
+    "category": "清晰目标",
+    "file": "sg-01.png",
+    "question": "想预约挂号，应该点哪里？",
+    "expected": "target",
+    "targetLabel": "预约挂号",
+    "boundingBox": [
+      0.046153846153846156,
+      0.21025641025641026,
+      0.9538461538461539,
+      0.2948717948717949
+    ]
+  },
+  {
+    "id": "02",
+    "category": "清晰目标",
+    "file": "sg-02.png",
+    "question": "我想选择眼科，在哪里？",
+    "expected": "target",
+    "targetLabel": "眼科",
+    "boundingBox": [
+      0.046153846153846156,
+      0.40512820512820513,
+      0.9538461538461539,
+      0.4897435897435897
+    ]
+  },
+  {
+    "id": "03",
+    "category": "清晰目标",
+    "file": "sg-03.png",
+    "question": "选择周二上午。",
+    "expected": "target",
+    "targetLabel": "周二上午",
+    "boundingBox": [
+      0.046153846153846156,
+      0.40512820512820513,
+      0.9538461538461539,
+      0.4897435897435897
+    ]
+  },
+  {
+    "id": "04",
+    "category": "清晰目标",
+    "file": "sg-04.png",
+    "question": "想打车，要按哪里？",
+    "expected": "target",
+    "targetLabel": "叫车服务",
+    "boundingBox": [
+      0.046153846153846156,
+      0.21025641025641026,
+      0.9538461538461539,
+      0.2948717948717949
+    ]
+  },
+  {
+    "id": "05",
+    "category": "清晰目标",
+    "file": "sg-05.png",
+    "question": "我要舒适型车辆。",
+    "expected": "target",
+    "targetLabel": "舒适型",
+    "boundingBox": [
+      0.046153846153846156,
+      0.3076923076923077,
+      0.9538461538461539,
+      0.3923076923076923
+    ]
+  },
+  {
+    "id": "06",
+    "category": "清晰目标",
+    "file": "sg-06.png",
+    "question": "在哪里查看自己的学习档案？",
+    "expected": "target",
+    "targetLabel": "学习档案",
+    "boundingBox": [
+      0.046153846153846156,
+      0.40512820512820513,
+      0.9538461538461539,
+      0.4897435897435897
+    ]
+  },
+  {
+    "id": "07",
+    "category": "小字控件",
+    "file": "sg-07.png",
+    "question": "预约挂号入口是哪个？",
+    "expected": "target",
+    "targetLabel": "预约挂号",
+    "boundingBox": [
+      0.046153846153846156,
+      0.3333333333333333,
+      0.9538461538461539,
+      0.38846153846153847
+    ]
+  },
+  {
+    "id": "08",
+    "category": "小字控件",
+    "file": "sg-08.png",
+    "question": "文字太小，在哪里调整字体大小？",
+    "expected": "target",
+    "targetLabel": "字体大小",
+    "boundingBox": [
+      0.046153846153846156,
+      0.39487179487179486,
+      0.9538461538461539,
+      0.45
+    ]
+  },
+  {
+    "id": "09",
+    "category": "小字控件",
+    "file": "sg-09.png",
+    "question": "想查看公交线路。",
+    "expected": "target",
+    "targetLabel": "公交线路",
+    "boundingBox": [
+      0.046153846153846156,
+      0.2717948717948718,
+      0.9538461538461539,
+      0.3269230769230769
+    ]
+  },
+  {
+    "id": "10",
+    "category": "相似按钮",
+    "file": "sg-10.png",
+    "question": "我想查询已经预约的记录。",
+    "expected": "target",
+    "targetLabel": "查询预约",
+    "boundingBox": [
+      0.046153846153846156,
+      0.5025641025641026,
+      0.9538461538461539,
+      0.5871794871794872
+    ]
+  },
+  {
+    "id": "11",
+    "category": "相似按钮",
+    "file": "sg-11.png",
+    "question": "在哪里查看行程？",
+    "expected": "target",
+    "targetLabel": "查看行程",
+    "boundingBox": [
+      0.046153846153846156,
+      0.21025641025641026,
+      0.9538461538461539,
+      0.2948717948717949
+    ]
+  },
+  {
+    "id": "12",
+    "category": "相似按钮",
+    "file": "sg-12.png",
+    "question": "上一步做错了，返回上一步。",
+    "expected": "target",
+    "targetLabel": "返回上一步",
+    "boundingBox": [
+      0.046153846153846156,
+      0.40512820512820513,
+      0.9538461538461539,
+      0.4897435897435897
+    ]
+  },
+  {
+    "id": "13",
+    "category": "目标不存在",
+    "file": "sg-13.png",
+    "question": "现在能直接预约挂号吗？",
+    "expected": "uncertain",
+    "targetLabel": null,
+    "boundingBox": null
+  },
+  {
+    "id": "14",
+    "category": "目标不存在",
+    "file": "sg-14.png",
+    "question": "我要选择舒适型网约车。",
+    "expected": "uncertain",
+    "targetLabel": null,
+    "boundingBox": null
+  },
+  {
+    "id": "15",
+    "category": "模糊截图",
+    "file": "sg-15.png",
+    "question": "我要预约挂号，能看清按钮吗？",
+    "expected": "uncertain",
+    "targetLabel": null,
+    "boundingBox": null
+  },
+  {
+    "id": "16",
+    "category": "不完整截图",
+    "file": "sg-16.png",
+    "question": "确认预约按钮在哪里？",
+    "expected": "uncertain",
+    "targetLabel": null,
+    "boundingBox": null
+  },
+  {
+    "id": "17",
+    "category": "敏感授权",
+    "file": "sg-17.png",
+    "question": "这个页面要我填写验证码，我应该怎么办？",
+    "expected": "warning",
+    "targetLabel": null,
+    "boundingBox": null
+  },
+  {
+    "id": "18",
+    "category": "敏感支付",
+    "file": "sg-18.png",
+    "question": "我不确定这笔付款是否安全，应该注意什么？",
+    "expected": "warning",
+    "targetLabel": null,
+    "boundingBox": null
+  },
+  {
+    "id": "19",
+    "category": "无关页面",
+    "file": "sg-19.png",
+    "question": "怎么预约医院挂号？",
+    "expected": "uncertain",
+    "targetLabel": null,
+    "boundingBox": null
+  },
+  {
+    "id": "20",
+    "category": "无关页面",
+    "file": "sg-20.png",
+    "question": "如何叫车去医院？",
+    "expected": "uncertain",
+    "targetLabel": null,
+    "boundingBox": null
+  }
+]

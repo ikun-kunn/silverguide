@@ -1,55 +1,44 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inspectSource } from './secret-scan-rules.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const TARGETS = ['index.html', 'src', 'dist'];
+const FRONTEND_TARGETS = ['index.html', 'src', 'public', 'dist'];
+const BACKEND_TARGETS = ['server', 'scripts', 'build', 'vite.config.ts', 'vite.server.config.ts', 'dist-server'];
 const SCANNABLE = new Set([
-  '.js', '.mjs', '.cjs', '.ts', '.tsx', '.vue', '.html', '.css', '.json', '.map',
+  '.js', '.mjs', '.cjs', '.ts', '.tsx', '.vue', '.html', '.css', '.json', '.map', '.ps1', '.sh', '.cmd', '.bat', '.yaml', '.yml', '.webmanifest',
 ]);
 
-/** TRD §8.2 / NFR-007：前端源码与构建产物都不得出现私密凭证 */
-const RULES = [
-  { label: 'Bearer 明文令牌', pattern: /Bearer\s+[A-Za-z0-9._-]{16,}/ },
-  { label: '疑似私密密钥', pattern: /\b(?:sk-|pat_|sat_|ghp_|gho_)[A-Za-z0-9_-]{20,}/i },
-  { label: 'Authorization 请求头', pattern: /["']?Authorization["']?\s*:/ },
-  { label: 'Cloud Agents 私有域名出现在前端', pattern: /api\.qoder\.com\.cn/ },
-  { label: '服务端凭证变量名出现在前端', pattern: /QODER_ACCESS_TOKEN/ },
-];
-
 const findings = [];
-const scanned = [];
+const scanned = { frontend: 0, backend: 0 };
 
-function walk(target) {
+function walk(target, frontend) {
   const absolute = join(ROOT, target);
   if (!existsSync(absolute)) return;
-  const stat = statSync(absolute);
+  const stat = lstatSync(absolute);
+  if (stat.isSymbolicLink()) return;
   if (stat.isFile()) {
-    if (SCANNABLE.has(extname(absolute))) scanFile(absolute);
+    if (SCANNABLE.has(extname(absolute))) scanFile(absolute, frontend);
     return;
   }
   for (const entry of readdirSync(absolute)) {
     if (entry === 'node_modules' || entry === '.git') continue;
-    walk(join(target, entry));
+    walk(join(target, entry), frontend);
   }
 }
 
-function scanFile(absolute) {
+function scanFile(absolute, frontend) {
   const content = readFileSync(absolute, 'utf8');
-  scanned.push(relative(ROOT, absolute));
-  content.split(/\r?\n/).forEach((line, index) => {
-    for (const rule of RULES) {
-      if (rule.pattern.test(line)) {
-        findings.push(`${relative(ROOT, absolute)}:${index + 1} — ${rule.label}`);
-      }
-    }
-  });
+  scanned[frontend ? 'frontend' : 'backend']++;
+  for (const finding of inspectSource(absolute, content, frontend)) findings.push(`${relative(ROOT, absolute)}:${finding.line} — ${finding.label}`);
 }
 
-for (const target of TARGETS) walk(target);
+for (const target of FRONTEND_TARGETS) walk(target, true);
+for (const target of BACKEND_TARGETS) walk(target, false);
 
 // 本地 .env 只允许占位值；真正的凭证应配置在 Qoder Sites 服务端 Secrets
-for (const name of ['.env', '.env.local', '.env.production', '.env.production.local']) {
+for (const name of ['.env', '.env.local', '.env.development', '.env.development.local', '.env.staging', '.env.staging.local', '.env.production', '.env.production.local', '.env.test', '.env.test.local']) {
   const absolute = join(ROOT, name);
   if (!existsSync(absolute)) continue;
   readFileSync(absolute, 'utf8')
@@ -79,6 +68,6 @@ if (findings.length > 0) {
 }
 
 console.log(
-  `凭证与产物检查通过：扫描 ${scanned.length} 个前端文件，未发现私密凭证；` +
+  `凭证与产物检查通过：扫描 ${scanned.frontend} 个前端文件、${scanned.backend} 个服务端/脚本文件，未发现私密凭证；` +
     `${existsSync(distIndex) ? 'dist/index.html 存在' : '尚未构建（dist 不存在）'}。`,
 );

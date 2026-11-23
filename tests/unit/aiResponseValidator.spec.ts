@@ -136,6 +136,23 @@ describe('AI 响应结构与坐标校验（TRD §10.1 / §7.2 / §7.3）', () =>
     expect(result.analysis.safetyWarning).toContain('银行卡密码');
   });
 
+  it.each([
+    { instruction: '确认转账', safetyWarning: null },
+    { targetLabel: '付款', safetyWarning: null },
+    { pageSummary: '需要验证码', safetyWarning: null },
+    { safetyWarning: '涉及支付' },
+  ])('敏感内容不保留模型的原始指导或位置标注', (override) => {
+    const outcome = validateVisionResponse(validResponse(override));
+    expect(outcome.analysis).toMatchObject({ status: 'uncertain', boundingBox: null, targetLabel: null, confidence: null,
+      instruction: expect.stringContaining('请暂停操作'), safetyWarning: expect.stringContaining('验证码') });
+  });
+
+  it('独立检查请求上下文，不只依赖模型的风险字段', () => {
+    const outcome = validateVisionResponse(validResponse(), '如何授权？');
+    expect(outcome.analysis.status).toBe('uncertain');
+    expect(outcome.analysis.boundingBox).toBeNull();
+  });
+
   it('永不输出超出 [0,1] 的坐标（批量恶意输入）', () => {
     const candidates: unknown[] = [
       [0, 0, 2, 2],

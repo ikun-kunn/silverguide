@@ -10,6 +10,7 @@ import {
   restartEngineSession,
   restoreEngineSnapshot,
   setEngineHintLevel,
+  SNAPSHOT_SCHEMA_VERSION,
 } from '@/engine/taskEngine';
 import type { TaskEngineSnapshot } from '@/engine/taskEngine';
 import { HOSPITAL_TASK, TAXI_TASK } from '@/tasks/demoData';
@@ -45,6 +46,7 @@ describe('任务会话创建与步骤迁移', () => {
   it('创建 active 会话并定位到第一步，不读取系统时间或生成 ID', () => {
     const snapshot = startSession();
     expect(snapshot).toEqual({
+      schemaVersion: SNAPSHOT_SCHEMA_VERSION,
       session: {
         id: 'session-1',
         taskId: HOSPITAL_TASK.id,
@@ -157,16 +159,25 @@ describe('错误操作、提示与帮助', () => {
     expect(changed.currentStepId).toBe(initial.currentStepId);
   });
 
-  it('主动帮助使用 hints[0]、累计帮助次数且不跳步或改提示级别', () => {
-    const initial = startSession();
+  it.each([1, 2, 3] as const)('L%i 主动帮助按提示粒度取值，累计次数且不改变步骤或等级', (level) => {
+    const initial = setEngineHintLevel(startSession(), level);
     const step = getCurrentStep(HOSPITAL_TASK, initial);
     const helped = requestEngineHelp(HOSPITAL_TASK, initial);
     expect(helped.accepted).toBe(true);
-    expect(helped.feedback).toBe(step.hints[0]);
+    expect(helped.feedback).toBe(step.hints[level === 1 ? 0 : 1]);
     expect(helped.snapshot.session.helpCount).toBe(1);
-    expect(helped.snapshot.session.currentHintLevel).toBe(3);
+    expect(helped.snapshot.session.currentHintLevel).toBe(level);
     expect(helped.snapshot.currentStepId).toBe(step.id);
     expect(initial.session.helpCount).toBe(0);
+  });
+  it('缺少第二级提示时使用 instruction，非法提示档位或已退出会话不改变状态', () => {
+    const initial = startSession();
+    const task = { ...HOSPITAL_TASK, steps: HOSPITAL_TASK.steps.map(step => ({ ...step, hints: [] })) };
+    expect(requestEngineHelp(task, initial).feedback).toBe(task.steps[0]?.instruction);
+    expect(setEngineHintLevel(initial, 4 as 3)).toBe(initial);
+    expect(setEngineHintLevel(initial, NaN as 3)).toBe(initial);
+    const abandoned = abandonEngineSession(initial);
+    expect(setEngineHintLevel(abandoned, 1)).toBe(abandoned);
   });
 
   it('已完成会话请求帮助不增加计数', () => {
@@ -247,15 +258,25 @@ describe('快照恢复与损坏数据防护', () => {
     expect(restoreEngineSnapshot(HOSPITAL_TASK, abandoned)).toEqual(abandoned);
   });
 
-  it('拒绝非对象、缺字段、额外字段和任务不匹配的数据', () => {
+  it('恢复无版本旧快照并允许同一 schema 的新增可选字段', () => {
+    const valid = startSession();
+    const legacy = { session: { ...valid.session, optionalField: 'new' }, currentStepId: valid.currentStepId, consecutiveErrors: valid.consecutiveErrors, optionalField: true };
+    expect(restoreEngineSnapshot(HOSPITAL_TASK, legacy)).toEqual(valid);
+    expect(restoreEngineSnapshot(HOSPITAL_TASK, { ...legacy, schemaVersion: 0 })).toEqual(valid);
+    expect(restoreEngineSnapshot(HOSPITAL_TASK, { ...legacy, schemaVersion: SNAPSHOT_SCHEMA_VERSION })).toEqual(valid);
+  });
+
+  it('拒绝非对象、缺必填字段、未知版本和任务不匹配的数据', () => {
     const valid = startSession();
     const cases: unknown[] = [
       null,
       [],
       'snapshot',
       {},
-      { ...valid, unexpected: true },
-      { ...valid, session: { ...valid.session, unexpected: true } },
+      { ...valid, schemaVersion: 99 },
+      { ...valid, schemaVersion: '1' },
+      { session: valid.session, currentStepId: valid.currentStepId },
+      { ...valid, session: { ...valid.session, completedAt: undefined } },
       { ...valid, session: { ...valid.session, id: '' } },
       { ...valid, session: { ...valid.session, taskId: TAXI_TASK.id } },
     ];

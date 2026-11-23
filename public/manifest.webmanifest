@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "SilverGuide 银龄引路人",
+  "short_name": "银龄引路人",
+  "description": "一步一步学会使用手机，安全练习模拟挂号和打车。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,19 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import FontScaleControl from '@/components/FontScaleControl.vue';
 import HintLevelControl from '@/components/HintLevelControl.vue';
-import { usePracticeStore } from '@/stores/practice';
+import ClearRecordsControl from '@/components/ClearRecordsControl.vue';
 import { useSettingsStore } from '@/stores/settings';
 import type { HintLevel } from '@/types';
 
 const settings = useSettingsStore();
-const practice = usePracticeStore();
-const message = ref('');
-
-async function clearRecords(): Promise<void> {
-  const success = await practice.clearRecords();
-  message.value = success ? '学习记录已清除，显示与声音偏好保持不变。' : '清除失败，请检查浏览器存储权限后重试。';
-}
 
 function setPreferredHint(level: HintLevel): void {
   settings.setPreferredHintLevel(level);
@@ -60,7 +52,7 @@ function setPreferredHint(level: HintLevel): void {
 
     <section class="mb-5 rounded-2xl border-2 border-sg-border bg-sg-surface p-4" aria-labelledby="voice-title">
       <h2 id="voice-title" class="mb-2 text-[1.15rem] font-semibold">语音偏好</h2>
-      <p class="mb-3 text-[0.9rem] text-sg-muted">M1 仅保存偏好，中文语音播报将在 M2 接入；所有指导始终保留文字。</p>
+      <p class="mb-3 text-[0.9rem] text-sg-muted">支持中文语音播报；所有指导始终保留文字。</p>
       <button
         type="button"
         role="switch"
@@ -71,21 +63,16 @@ function setPreferredHint(level: HintLevel): void {
       >
         语音播报：{{ settings.voiceEnabled ? '已开启' : '已关闭' }}
       </button>
+      <label for="voice-rate" class="mt-3 block font-semibold">朗读速度</label>
+      <select id="voice-rate" :value="settings.voiceRate" class="min-h-tap w-full rounded-xl border-2 border-sg-border bg-sg-surface p-2" @change="settings.setVoiceRate(Number(($event.target as HTMLSelectElement).value))">
+        <option :value="0.75">较慢</option><option :value="1">正常</option><option :value="1.25">较快</option>
+      </select>
     </section>
 
     <section class="rounded-2xl border-2 border-sg-warn bg-sg-surface p-4" aria-labelledby="data-title">
       <h2 id="data-title" class="text-[1.15rem] font-semibold">本机数据</h2>
       <p class="my-2 text-sg-muted">清除练习进度和结果，不会清除上面的显示与声音偏好。</p>
-      <button
-        type="button"
-        class="min-h-tap w-full rounded-xl border-2 border-sg-warn px-4 py-3 font-semibold text-sg-warn"
-        @click="clearRecords"
-      >
-        清除学习记录
-      </button>
-      <p v-if="message || practice.persistenceWarning" role="status" class="mt-3">
-        {{ message || practice.persistenceWarning }}
-      </p>
+      <ClearRecordsControl />
     </section>
   </main>
 </template>

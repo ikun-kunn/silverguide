@@ -1,9 +1,24 @@
 import { fileURLToPath, URL } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vitest/config';
+import type { Plugin } from 'vite';
+import { createVisionApi } from './server/visionApi';
+import { readVisionConfig } from './server/config';
+import { silverguidePwaPlugin } from './build/pwa';
+
+/** 仅运行于 Vite Node 进程，不进入浏览器构建产物。静态部署仍需独立同源适配层。 */
+function visionApiPlugin(): Plugin {
+  const config = readVisionConfig();
+  const middleware = createVisionApi(config.provider, 85_000, config);
+  return {
+    name: 'silverguide-local-vision-api',
+    configureServer(server) { server.middlewares.use(middleware); },
+    configurePreviewServer(server) { server.middlewares.use(middleware); },
+  };
+}
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), visionApiPlugin(), silverguidePwaPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -12,6 +12,7 @@ import { deflateSync } from 'node:zlib';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readSessionId } from './session-response.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const REPORT_PATH = join(ROOT, 'docs', 'm0-ai-verification.json');
@@ -160,10 +161,12 @@ try {
     process.exit(0);
   }
 
-  const session = await createResponse.json();
-  report.sessionId = session.id;
+  const sessionId = readSessionId(await createResponse.json());
+  if (!sessionId) throw new Error('INVALID_SESSION_ID');
+  report.sessionId = sessionId;
+  const sessionEndpoint = `${baseUrl}/sessions/${encodeURIComponent(sessionId)}`;
 
-  const sendResponse = await fetch(`${baseUrl}/sessions/${session.id}/events`, {
+  const sendResponse = await fetch(`${sessionEndpoint}/events`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -194,7 +197,7 @@ try {
   let usage = null;
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    const statusResponse = await fetch(`${baseUrl}/sessions/${session.id}`, { headers });
+    const statusResponse = await fetch(sessionEndpoint, { headers });
     if (statusResponse.ok) {
       const snapshot = await statusResponse.json();
       if (snapshot.status === 'running' || snapshot.status === 'rescheduling') sawRunning = true;
@@ -212,7 +215,7 @@ try {
   report.credits = usage ?? null;
 
   const eventsResponse = await fetch(
-    `${baseUrl}/sessions/${session.id}/events?limit=100&order=desc`,
+    `${sessionEndpoint}/events?limit=100&order=desc`,
     { headers },
   );
   let modelText = '';
@@ -257,7 +260,9 @@ try {
     report.reason = '模型输出不是合法 JSON，需由 aiResponseValidator 判定为不可用';
   }
 } catch (error) {
-  report.reason = `请求异常：${error instanceof Error ? error.message : String(error)}`;
+  report.reason = error instanceof Error && error.message === 'INVALID_SESSION_ID'
+    ? '创建 Session 响应缺少有效 ID，未继续发送图片或轮询。'
+    : '请求异常，请检查服务配置、网络或返回结构。';
 } finally {
   report.elapsedMs = Date.now() - startedAt;
   saveReport(report);

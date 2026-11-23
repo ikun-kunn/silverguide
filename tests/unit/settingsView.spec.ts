@@ -26,7 +26,9 @@ describe('M1 设置页与适老化组件', () => {
     expect(document.documentElement.dataset.highContrast).toBe('true');
     await switches[1]?.trigger('click');
     expect(settings.voiceEnabled).toBe(false);
-    expect(wrapper.text()).toContain('M2 接入');
+    expect(wrapper.text()).toContain('中文语音播报');
+    await wrapper.get('#voice-rate').setValue('0.75');
+    expect(settings.voiceRate).toBe(0.75);
   });
 
   it('清除学习记录但保留适老化偏好', async () => {
@@ -39,6 +41,12 @@ describe('M1 设置页与适老化组件', () => {
     const wrapper = mount(SettingsView);
     const clear = wrapper.findAll('button').find((button) => button.text() === '清除学习记录');
     await clear?.trigger('click');
+    expect(await progressRepository.list()).toHaveLength(1);
+    const cancel = wrapper.findAll('button').find((button) => button.text() === '取消，保留记录');
+    await cancel?.trigger('click');
+    expect(await progressRepository.list()).toHaveLength(1);
+    await wrapper.findAll('button').find((button) => button.text() === '清除学习记录')?.trigger('click');
+    await wrapper.get('[data-testid="confirm-clear-records"]').trigger('click');
     await flushPromises();
     expect(await progressRepository.list()).toEqual([]);
     expect(practice.snapshot).toBeNull();
@@ -51,6 +59,7 @@ describe('M1 设置页与适老化组件', () => {
     const wrapper = mount(SettingsView);
     const button = wrapper.findAll('button').find((item) => item.text() === '清除学习记录');
     await button?.trigger('click');
+    await wrapper.get('[data-testid="confirm-clear-records"]').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('清除失败');
     expect(wrapper.text()).not.toContain('显示与声音偏好保持不变');

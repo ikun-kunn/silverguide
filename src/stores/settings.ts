@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { DEFAULT_USER_SETTINGS } from '@/types/settings';
 import type { UserSettings } from '@/types/settings';
+import { warnDiagnostic } from '@/utils/diagnostics';
 
 const STORAGE_KEY = 'silverguide.settings.m0';
 
@@ -45,11 +46,12 @@ function readStored(): UserSettings | null {
           ? value.highContrast
           : DEFAULT_USER_SETTINGS.highContrast,
       preferredHintLevel:
-        typeof value.preferredHintLevel === 'number'
+        typeof value.preferredHintLevel === 'number' && Number.isFinite(value.preferredHintLevel)
           ? clamp(Math.round(value.preferredHintLevel), 1, 3)
           : DEFAULT_USER_SETTINGS.preferredHintLevel,
     };
-  } catch {
+  } catch (error) {
+    warnDiagnostic('settings.read', error);
     return null;
   }
 }
@@ -65,6 +67,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setVoiceEnabled(value: boolean): void {
       this.voiceEnabled = value;
+      this.persist();
+    },
+    setVoiceRate(value: number): void {
+      this.voiceRate = Number.isFinite(value) ? clamp(value, 0.5, 2) : DEFAULT_USER_SETTINGS.voiceRate;
       this.persist();
     },
     setHighContrast(value: boolean): void {
@@ -95,8 +101,9 @@ export const useSettingsStore = defineStore('settings', {
       };
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-      } catch {
-        // 隐私模式或配额不足时静默降级为内存态，不影响使用
+      } catch (error) {
+        warnDiagnostic('settings.write', error);
+        // 隐私模式或配额不足时降级为内存态，不影响使用
       }
     },
   },

@@ -1,32 +1,39 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AppButton from '@/components/AppButton.vue';
 import HintLevelControl from '@/components/HintLevelControl.vue';
 import HospitalSimulation from '@/components/HospitalSimulation.vue';
 import TaxiSimulation from '@/components/TaxiSimulation.vue';
-import { getCurrentStep } from '@/engine/taskEngine';
+import SpeechControls from '@/components/SpeechControls.vue';
+import { getCurrentStep, getStepHint } from '@/engine/taskEngine';
 import { usePracticeStore } from '@/stores/practice';
 import type { HintLevel } from '@/types';
 import { formatDuration } from '@/utils/format';
+import { warnDiagnostic } from '@/utils/diagnostics';
 
 const props = defineProps<{ taskId: string }>();
 const router = useRouter();
 const practice = usePracticeStore();
+let mounted = true;
+let navigationGeneration = 0;
+onBeforeUnmount(() => { mounted = false; navigationGeneration++; });
 
 watch(
   () => props.taskId,
   (taskId) => {
+    navigationGeneration++;
     void practice.loadTask(taskId);
   },
-  { immediate: true },
+  { immediate: true, flush: 'sync' },
 );
 
 const currentStep = computed(() => {
   if (!practice.currentTask || !practice.snapshot) return null;
   try {
     return getCurrentStep(practice.currentTask, practice.snapshot);
-  } catch {
+  } catch (error) {
+    warnDiagnostic('training.step', error);
     return null;
   }
 });
@@ -38,14 +45,18 @@ const stepIndex = computed(() => {
 
 const showTarget = computed(
   () =>
-    !practice.isCompleted &&
-    (practice.snapshot?.session.currentHintLevel === 1 || practice.helpVisible),
+    practice.snapshot?.session.status === 'active' && practice.snapshot.session.currentHintLevel === 1,
 );
 
 const guidance = computed(() => {
-  if (!currentStep.value || practice.isCompleted) return '';
-  if (practice.snapshot?.session.currentHintLevel === 3 && !practice.helpVisible) {
+  if (!currentStep.value || practice.snapshot?.session.status !== 'active') return '';
+  const level = practice.snapshot.session.currentHintLevel;
+  if (practice.helpVisible) return getStepHint(currentStep.value, level);
+  if (level === 3) {
     return '请独立试一次。如果不知道怎么做，可以点「帮我一下」。';
+  }
+  if (level === 2) {
+    return getStepHint(currentStep.value, level);
   }
   return currentStep.value.instruction;
 });
@@ -55,8 +66,12 @@ async function restart(): Promise<void> {
 }
 
 async function exitPractice(): Promise<void> {
+  const generation = navigationGeneration;
+  const route = router.currentRoute?.value.fullPath;
+  const sessionId = practice.snapshot?.session.id;
   await practice.abandon();
-  await router.push('/practice');
+  if (mounted && generation === navigationGeneration && router.currentRoute?.value.fullPath === route &&
+      practice.snapshot?.session.id === sessionId) await router.push('/practice');
 }
 </script>
 
@@ -103,7 +118,7 @@ async function exitPractice(): Promise<void> {
         <div class="rounded-2xl border-2 border-sg-primary bg-sg-surface p-5">
           <p class="text-[2rem] text-sg-primary" aria-hidden="true">✓</p>
           <h2 id="result-title" class="text-[1.35rem] font-bold">
-            {{ props.taskId === 'hospital-registration' ? '模拟预约成功' : '模拟叫车成功' }}，本次练习完成
+            {{ practice.currentTask.id === 'hospital-registration' ? '模拟预约成功' : '模拟叫车成功' }}，本次练习完成
           </h2>
           <p class="mt-2 text-sg-muted">您已经走完整个模拟流程。可以再练一次，逐步减少提示，试着自己完成。</p>
           <dl class="my-5 grid grid-cols-2 gap-3">
@@ -119,7 +134,13 @@ async function exitPractice(): Promise<void> {
         </div>
       </section>
 
-      <template v-else-if="practice.snapshot && currentStep && stepIndex >= 0">
+      <section v-else-if="practice.snapshot?.session.status === 'abandoned'" class="rounded-2xl border-2 border-sg-border bg-sg-surface p-4">
+        <h2 class="font-bold">本次练习已退出</h2>
+        <p class="my-3">原有学习记录仍然保留。可以重新开始一次练习。</p>
+        <AppButton label="重新开始" @activate="restart" />
+      </section>
+
+      <template v-else-if="practice.snapshot?.session.status === 'active' && currentStep && stepIndex >= 0">
         <section class="mb-4" aria-label="训练进度">
           <div class="mb-2 flex justify-between gap-3 text-[0.9rem] font-semibold">
             <span>第 {{ stepIndex + 1 }} 步，共 {{ practice.currentTask.steps.length }} 步</span>
@@ -142,17 +163,18 @@ async function exitPractice(): Promise<void> {
           <h2 id="guidance-title" class="font-bold">现在要做的事</h2>
           <p class="mt-1">{{ guidance }}</p>
           <p v-if="showTarget" class="mt-2 font-semibold text-sg-primary">黄色边框和「点这里」标出了当前按钮。</p>
+          <SpeechControls v-if="practice.snapshot.session.currentHintLevel !== 3 || practice.helpVisible" :text="guidance" />
         </section>
 
         <HospitalSimulation
-          v-if="props.taskId === 'hospital-registration'"
+          v-if="practice.currentTask.id === 'hospital-registration'"
           :step-index="stepIndex"
           :target-element-id="currentStep.targetElementId"
           :highlighted="showTarget"
           @activate="practice.activate"
         />
         <TaxiSimulation
-          v-else
+          v-else-if="practice.currentTask.id === 'taxi-ride'"
           :step-index="stepIndex"
           :target-element-id="currentStep.targetElementId"
           :highlighted="showTarget"
@@ -187,9 +209,10 @@ async function exitPractice(): Promise<void> {
         </details>
       </template>
 
-      <p v-else role="alert" class="rounded-xl border-2 border-sg-warn bg-sg-surface p-4">
-        当前步骤无法显示。请返回训练中心重新开始，已有历史记录不会被删除。
-      </p>
+      <section v-else class="rounded-xl border-2 border-sg-warn bg-sg-surface p-4">
+        <p role="status">当前练习无法继续。请选择重新开始。</p>
+        <AppButton class="mt-3" label="重新开始练习" @activate="practice.loadTask(props.taskId)" />
+      </section>
     </template>
   </main>
 </template>

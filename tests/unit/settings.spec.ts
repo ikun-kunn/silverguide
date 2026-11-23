@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsStore } from '@/stores/settings';
 import { DEFAULT_USER_SETTINGS } from '@/types/settings';
 
@@ -41,5 +41,18 @@ describe('本地设置持久化（TRD §6.4 / NFR-006）', () => {
     const store = useSettingsStore();
     expect(store.fontScale).toBeLessThanOrEqual(1.6);
     expect(store.preferredHintLevel).toBe(3);
+  });
+  it('非有限数值回到默认提示档位；日志不包含本地原始数据', () => {
+    window.localStorage.setItem('silverguide.settings.m0', '{"preferredHintLevel":1e309}');
+    setActivePinia(createPinia());
+    expect(useSettingsStore().preferredHintLevel).toBe(DEFAULT_USER_SETTINGS.preferredHintLevel);
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('private-user-value', 'SecurityError'); });
+    setActivePinia(createPinia());
+    expect(useSettingsStore().fontScale).toBe(1);
+    expect(warn).toHaveBeenCalledWith('[SilverGuide]', 'settings.read', { errorType: 'SecurityError' });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('private-user-value');
+    getItem.mockRestore(); warn.mockRestore();
   });
 });

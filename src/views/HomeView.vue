@@ -3,11 +3,11 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppButton from '@/components/AppButton.vue';
 import FontScaleControl from '@/components/FontScaleControl.vue';
+import PwaInstallCard from '@/components/PwaInstallCard.vue';
 import { useSettingsStore } from '@/stores/settings';
 
 const router = useRouter();
 const settings = useSettingsStore();
-const notice = ref('');
 const ONBOARDING_KEY = 'silverguide.onboarding.seen.m1';
 
 function hasSeenGuide(): boolean {
@@ -34,7 +34,7 @@ function startLearning(): void {
 }
 
 function openAiHelper(): void {
-  notice.value = 'AI 服务暂不可用，将在下一阶段开放。模拟训练不需要 AI、联网或登录，现在就可以正常完成。';
+  void router.push('/ai-helper');
 }
 </script>
 
@@ -88,7 +88,7 @@ function openAiHelper(): void {
         </AppButton>
         <AppButton
           label="AI 看图指导"
-          description="AI 服务暂不可用，不影响模拟训练"
+          description="上传截图，了解下一步怎么操作"
           variant="secondary"
           @activate="openAiHelper"
         >
@@ -100,15 +100,6 @@ function openAiHelper(): void {
           </template>
         </AppButton>
       </div>
-      <p
-        v-if="notice"
-        role="status"
-        aria-live="polite"
-        class="mt-3 rounded-2xl border-2 border-sg-border bg-sg-surface p-4"
-        data-testid="notice"
-      >
-        {{ notice }}
-      </p>
     </section>
 
     <section
@@ -120,7 +111,7 @@ function openAiHelper(): void {
       <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-sg-border pt-4">
         <div>
           <p class="font-semibold">语音播报偏好</p>
-          <p class="text-[0.85rem] text-sg-muted">朗读功能将在 M2 阶段接入</p>
+          <p class="text-[0.85rem] text-sg-muted">在指导页面点击朗读说明</p>
         </div>
         <button
           type="button"
@@ -139,8 +130,9 @@ function openAiHelper(): void {
       </div>
     </section>
 
+    <PwaInstallCard />
     <footer class="text-center text-[0.85rem] text-sg-muted">
-      SilverGuide · M1 基础产品 · 无需注册
+      SilverGuide · 无需注册 · <RouterLink to="/about" class="font-semibold text-sg-primary">关于与隐私说明</RouterLink>
     </footer>
   </main>
 </template>

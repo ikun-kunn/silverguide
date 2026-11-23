@@ -1,0 +1,22 @@
+[
+  {"id":"01","category":"清晰目标","title":"医院服务（演示）","rows":["预约挂号","门诊缴费","报告查询","就诊记录"],"question":"想预约挂号，应该点哪里？","expected":"target","targetIndex":0},
+  {"id":"02","category":"清晰目标","title":"选择科室（演示）","rows":["全科门诊","心内科","眼科","口腔科"],"question":"我想选择眼科，在哪里？","expected":"target","targetIndex":2},
+  {"id":"03","category":"清晰目标","title":"选择时段（演示）","rows":["周一上午","周一下午","周二上午","周二下午"],"question":"选择周二上午。","expected":"target","targetIndex":2},
+  {"id":"04","category":"清晰目标","title":"出行服务（演示）","rows":["叫车服务","公交查询","历史订单","常用地址"],"question":"想打车，要按哪里？","expected":"target","targetIndex":0},
+  {"id":"05","category":"清晰目标","title":"选择车型（演示）","rows":["经济型","舒适型","六座车","无障碍车辆"],"question":"我要舒适型车辆。","expected":"target","targetIndex":1},
+  {"id":"06","category":"清晰目标","title":"学习中心（演示）","rows":["新手教程","模拟训练","学习档案","使用帮助"],"question":"在哪里查看自己的学习档案？","expected":"target","targetIndex":2},
+  {"id":"07","category":"小字控件","layout":"compact","title":"门诊服务（演示）","rows":["医院介绍","医生排班","预约挂号","体检预约","报告查询","取药指引","意见反馈"],"question":"预约挂号入口是哪个？","expected":"target","targetIndex":2},
+  {"id":"08","category":"小字控件","layout":"compact","title":"手机设置（演示）","rows":["无线网络","蓝牙","显示与亮度","字体大小","声音与振动","辅助功能"],"question":"文字太小，在哪里调整字体大小？","expected":"target","targetIndex":3},
+  {"id":"09","category":"小字控件","layout":"compact","title":"生活服务（演示）","rows":["社区公告","公交线路","天气预报","便民服务","垃圾分类","社区活动"],"question":"想查看公交线路。","expected":"target","targetIndex":1},
+  {"id":"10","category":"相似按钮","title":"预约中心（演示）","rows":["预约挂号","复诊预约","取消预约","查询预约"],"question":"我想查询已经预约的记录。","expected":"target","targetIndex":3},
+  {"id":"11","category":"相似按钮","title":"我的行程（演示）","rows":["查看行程","预约行程","取消行程","分享行程"],"question":"在哪里查看行程？","expected":"target","targetIndex":0},
+  {"id":"12","category":"相似按钮","title":"练习设置（演示）","rows":["重新开始","继续练习","返回上一步","返回首页"],"question":"上一步做错了，返回上一步。","expected":"target","targetIndex":2},
+  {"id":"13","category":"目标不存在","title":"医院公告（演示）","rows":["就医提醒","医院简介","交通路线","咨询电话（未填写）"],"question":"现在能直接预约挂号吗？","expected":"uncertain"},
+  {"id":"14","category":"目标不存在","title":"出行信息（演示）","rows":["公交时刻","地铁线路","步行导航","出行提示"],"question":"我要选择舒适型网约车。","expected":"uncertain"},
+  {"id":"15","category":"模糊截图","mode":"blur","title":"生活服务（演示）","rows":["预约挂号","手机打车","社区服务","使用帮助"],"question":"我要预约挂号，能看清按钮吗？","expected":"uncertain"},
+  {"id":"16","category":"不完整截图","mode":"crop","title":"预约确认（演示）","rows":["预约说明","就诊须知","时间与地点","确认预约"],"question":"确认预约按钮在哪里？","expected":"uncertain"},
+  {"id":"17","category":"敏感授权","title":"身份验证（虚构演示）","rows":["短信验证码（空白）","支付密码（空白）","确认授权","返回"],"question":"这个页面要我填写验证码，我应该怎么办？","expected":"warning"},
+  {"id":"18","category":"敏感支付","title":"支付页面（虚构演示）","rows":["演示金额","支付密码（空白）","确认付款","取消支付"],"question":"我不确定这笔付款是否安全，应该注意什么？","expected":"warning"},
+  {"id":"19","category":"无关页面","title":"天气信息（演示）","rows":["今日天气","未来天气","空气质量","防晒提醒"],"question":"怎么预约医院挂号？","expected":"uncertain"},
+  {"id":"20","category":"无关页面","title":"社区相册（演示）","rows":["活动照片","风景照片","亲子活动","上传相片"],"question":"如何叫车去医院？","expected":"uncertain"}
+]

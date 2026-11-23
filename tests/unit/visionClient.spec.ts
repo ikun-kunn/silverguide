@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { analyzeScreenshot, resolveQuestion } from '@/services/ai/visionClient';
 import type { FetchLike } from '@/services/ai/visionClient';
 
@@ -45,7 +45,8 @@ describe('AI 服务客户端：接口契约与降级（TRD §7.2 / §7.4 / NFR-0
     expect(capturedInit?.credentials).toBe('same-origin');
     const form = capturedInit?.body as FormData;
     expect(form).toBeInstanceOf(FormData);
-    expect((form.get('image') as File).name).toBe('shot.png');
+    // 固定为通用文件名，避免把用户原始文件名发给服务端（隐私保护）。
+    expect((form.get('image') as File).name).toBe('screenshot.png');
     expect(form.get('question')).toBe('我应该点哪里？');
     expect(form.get('taskContext')).toBe('hospital-registration');
     expect(outcome.degraded).toBe(false);
@@ -67,6 +68,7 @@ describe('AI 服务客户端：接口契约与降级（TRD §7.2 / §7.4 / NFR-0
   it('未输入问题时自动改为「先解释页面主要功能」', () => {
     expect(resolveQuestion('   ')).toContain('主要功能');
     expect(resolveQuestion('我应该点哪里？')).toBe('我应该点哪里？');
+    expect(resolveQuestion('  我应该点哪里？ \n')).toBe('我应该点哪里？');
   });
 
   it.each([
@@ -105,6 +107,39 @@ describe('AI 服务客户端：接口契约与降级（TRD §7.2 / §7.4 / NFR-0
     const outcome = await analyzeScreenshot({ image: bad, question: '' }, { fetchImpl });
     expect(called).toBe(false);
     expect(outcome.errorCode).toBe('UNSUPPORTED_MEDIA_TYPE');
+  });
+  it('进入函数前已取消的 signal 不发送请求，直接返回 NETWORK_ERROR', async () => {
+    const controller = new AbortController(); controller.abort();
+    const fetchImpl = vi.fn<FetchLike>(async () => fakeResponse(successPayload));
+    const result = await analyzeScreenshot({ image: pngFile(), question: '' }, { fetchImpl, signal: controller.signal });
+    expect(result.errorCode).toBe('NETWORK_ERROR');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+  it('即使 fetch 忽略取消、晚返回成功结果，也不采纳已取消响应', async () => {
+    const controller = new AbortController();
+    const fetchImpl: FetchLike = async () => { controller.abort(); return fakeResponse(successPayload); };
+    const result = await analyzeScreenshot({ image: pngFile(), question: '' }, { fetchImpl, signal: controller.signal });
+    expect(result.errorCode).toBe('NETWORK_ERROR');
+    expect(result.analysis.boundingBox).toBeNull();
+  });
+  it('先收到外部取消时，稍后超时不会覆盖取消原因', async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      const fetchImpl: FetchLike = () => new Promise(resolve => { setTimeout(() => resolve(fakeResponse(successPayload)), 20); });
+      const pending = analyzeScreenshot({ image: pngFile(), question: '' }, { fetchImpl, signal: controller.signal, timeoutMs: 5 });
+      controller.abort();
+      await vi.advanceTimersByTimeAsync(20);
+      expect((await pending).errorCode).toBe('NETWORK_ERROR');
+    } finally { vi.useRealTimers(); }
+  });
+  it('网络失败日志仅包含异常类别，不泄露原始内容', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchImpl: FetchLike = async () => { throw new TypeError('private screenshot payload'); };
+    expect((await analyzeScreenshot({ image: pngFile(), question: '' }, { fetchImpl })).errorCode).toBe('NETWORK_ERROR');
+    expect(warn).toHaveBeenCalledWith('[SilverGuide]', 'vision.fetch', { errorType: 'TypeError' });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('private screenshot payload');
+    warn.mockRestore();
   });
 
   it('超时返回 AI_TIMEOUT，网络异常返回 NETWORK_ERROR', async () => {

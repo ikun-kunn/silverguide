@@ -95,7 +95,7 @@
 | 触发 | errorCode | 用户可见结果 |
 |---|---|---|
 | 静态站点无 `/api/vision/analyze`（404） | `NOT_CONFIGURED` | 明确标记「AI 看图服务尚未接入」 |
-| 超时（默认 20s） | `AI_TIMEOUT` | 明确提示 + 可重试 |
+| 超时（M2 默认客户端 90s、服务端 85s） | `AI_TIMEOUT` | 明确提示 + 可重试 |
 | 429 / 402 / 5xx | `RATE_LIMITED` / `AI_QUOTA_EXCEEDED` / `AI_UNAVAILABLE` | 明确提示 + 可重试 |
 | 网络断开 | `NETWORK_ERROR` | 明确提示 + 可重试 |
 | 输出解析失败 | `INVALID_MODEL_OUTPUT` | 不展示任何指引 |

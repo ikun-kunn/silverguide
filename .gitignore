@@ -1,6 +1,9 @@
 node_modules/
 dist/
+dist-server/
 coverage/
+playwright-report/
+test-results/
 .env
 .env.local
 .env.*.local
@@ -9,3 +12,4 @@ coverage/
 .qoder/
 .workbuddy/
 docs/m0-ai-verification.json
+docs/vision-evaluation/evaluation-*.json

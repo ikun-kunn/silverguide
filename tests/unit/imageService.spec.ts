@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   COMPRESS_THRESHOLD_BYTES,
   checkImageFile,
   extensionFor,
   isSupportedMediaType,
+  prepareScreenshot,
   shouldCompress,
 } from '@/services/imageService';
 import { MAX_UPLOAD_BYTES } from '@/services/ai/contract';
@@ -44,5 +45,27 @@ describe('上传前图片检查（TRD §3.5 / §7.2）', () => {
     expect(extensionFor('image/svg+xml')).toBe('bin');
     expect(isSupportedMediaType('image/png')).toBe(true);
     expect(isSupportedMediaType('image/svg+xml')).toBe(false);
+  });
+
+  it('小图片也重新编码为新 Blob，不直接返回原始文件', async () => {
+    const drawImage = vi.fn();
+    const encoded = new Blob(['pixel-only'], { type: 'image/webp' });
+    const revoke = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:temporary'), revokeObjectURL: revoke });
+    vi.stubGlobal('Image', class {
+      naturalWidth = 320; naturalHeight = 640;
+      onload: (() => void) | null = null;
+      set src(_src: string) { this.onload?.(); }
+    });
+    const context = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    const toBlob = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(callback => callback(encoded));
+    try {
+      const original = new File(['image-with-metadata'], 'private-name.jpg', { type: 'image/jpeg' });
+      const result = await prepareScreenshot(original);
+      expect(result).toBe(encoded);
+      expect(result).not.toBe(original);
+      expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 320, 640);
+      expect(revoke).toHaveBeenCalledWith('blob:temporary');
+    } finally { context.mockRestore(); toBlob.mockRestore(); vi.unstubAllGlobals(); }
   });
 });

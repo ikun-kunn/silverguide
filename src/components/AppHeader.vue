@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 const links = [
   { to: '/', label: '首页', exact: true },
   { to: '/practice', label: '模拟训练', exact: false },
+  { to: '/ai-helper', label: 'AI 看图', exact: true },
   { to: '/progress', label: '学习档案', exact: true },
   { to: '/settings', label: '设置', exact: true },
 ];
@@ -28,7 +29,7 @@ const links = [
         </span>
         银龄引路人
       </RouterLink>
-      <nav class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="主要导航">
+      <nav class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="主要导航">
         <RouterLink
           v-for="link in links"
           :key="link.to"

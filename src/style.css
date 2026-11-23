@@ -13,6 +13,7 @@
   --sg-primary-ink: #ffffff;
   --sg-border: #c9d4e5;
   --sg-warn: #8a4b08;
+  --sg-focus: #b45309;
 }
 
 html {
@@ -43,11 +44,25 @@ html[data-high-contrast='true'] {
   --sg-border: #000000;
   --sg-primary: #00308f;
   --sg-warn: #6b2f00;
+  --sg-focus: #000000;
 }
 
 :focus-visible {
-  outline: 3px solid #b45309;
+  outline: 3px solid var(--sg-focus);
   outline-offset: 2px;
+}
+
+html[data-high-contrast='true'] :focus-visible {
+  outline: 4px solid var(--sg-focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+@media (forced-colors: active) {
+  :focus-visible, html[data-high-contrast='true'] :focus-visible {
+    outline-color: Highlight;
+    box-shadow: none;
+  }
 }
 
 button {

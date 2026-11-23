@@ -14,7 +14,7 @@ export const HOSPITAL_TASK: Task = {
       targetElementId: 'hospital-home-entry',
       expectedAction: 'click',
       successCondition: '进入虚构医院服务首页，页面显示“预约挂号”入口。',
-      hints: ['找到写着“进入医院首页”的按钮，轻轻点一下。', '这是练习入口，点击进入后不会办理真实挂号。'],
+      hints: ['找到写着“进入医院首页”的按钮，轻轻点一下。', '找医院首页入口。'],
       nextStepId: 'hospital-open-registration',
     },
     {
@@ -24,7 +24,7 @@ export const HOSPITAL_TASK: Task = {
       targetElementId: 'hospital-registration-button',
       expectedAction: 'click',
       successCondition: '打开科室选择页面，并显示可选科室列表。',
-      hints: ['请点击页面上的“预约挂号”按钮。', '不用选择其他服务，只找“预约挂号”这四个字。'],
+      hints: ['请点击页面上的“预约挂号”按钮。', '找“预约挂号”。'],
       nextStepId: 'hospital-select-department',
     },
     {
@@ -34,7 +34,7 @@ export const HOSPITAL_TASK: Task = {
       targetElementId: 'hospital-department-general',
       expectedAction: 'click',
       successCondition: '全科门诊被选中，页面进入模拟日期与时段选择。',
-      hints: ['在科室列表中点击“全科门诊”。', '本次练习统一选择全科门诊，不涉及真实诊疗建议。'],
+      hints: ['在科室列表中点击“全科门诊”。', '找“全科门诊”。'],
       nextStepId: 'hospital-select-timeslot',
     },
     {
@@ -44,7 +44,7 @@ export const HOSPITAL_TASK: Task = {
       targetElementId: 'hospital-timeslot-monday-morning',
       expectedAction: 'click',
       successCondition: '周一上午时段被选中，页面显示预约信息确认按钮。',
-      hints: ['找到“周一上午”，点击选择这个时段。', '日期和时段都是演示数据，请直接选择“周一上午”。'],
+      hints: ['找到“周一上午”，点击选择这个时段。', '找“周一上午”。'],
       nextStepId: 'hospital-confirm-registration',
     },
     {
@@ -54,7 +54,7 @@ export const HOSPITAL_TASK: Task = {
       targetElementId: 'hospital-confirm-button',
       expectedAction: 'click',
       successCondition: '模拟预约信息已确认，页面出现查看预约结果的入口。',
-      hints: ['确认显示全科门诊、周一上午，再点击“确认模拟预约”。', '这里只是练习确认信息，不会向医院提交预约。'],
+      hints: ['确认显示全科门诊、周一上午，再点击“确认模拟预约”。', '核对信息后确认模拟预约。'],
       nextStepId: 'hospital-view-result',
     },
     {
@@ -64,7 +64,7 @@ export const HOSPITAL_TASK: Task = {
       targetElementId: 'hospital-result-button',
       expectedAction: 'click',
       successCondition: '页面明确显示“模拟预约成功”，且不生成真实医疗预约。',
-      hints: ['最后点击“查看预约结果”。', '看到“模拟预约成功”就说明练习全部完成。'],
+      hints: ['最后点击“查看预约结果”。', '找“查看预约结果”。'],
       nextStepId: null,
     },
   ],
@@ -84,7 +84,7 @@ export const TAXI_TASK: Task = {
       targetElementId: 'taxi-home-entry',
       expectedAction: 'click',
       successCondition: '进入虚构打车服务首页，页面显示目的地选择入口。',
-      hints: ['点击“进入打车首页”按钮。', '这是模拟应用入口，不会联系真实司机。'],
+      hints: ['点击“进入打车首页”按钮。', '找打车首页入口。'],
       nextStepId: 'taxi-select-destination',
     },
     {
@@ -94,7 +94,7 @@ export const TAXI_TASK: Task = {
       targetElementId: 'taxi-destination-park',
       expectedAction: 'click',
       successCondition: '市民公园被设为虚拟目的地，页面进入车型选择。',
-      hints: ['在目的地列表中点击“市民公园”。', '本次练习的目的地是市民公园，不需要输入真实地址。'],
+      hints: ['在目的地列表中点击“市民公园”。', '找“市民公园”。'],
       nextStepId: 'taxi-select-car',
     },
     {
@@ -104,7 +104,7 @@ export const TAXI_TASK: Task = {
       targetElementId: 'taxi-car-comfort',
       expectedAction: 'click',
       successCondition: '舒适型车型被选中，页面显示车型与行程摘要。',
-      hints: ['找到车型列表里的“舒适型”，点击一下。', '车型只是演示选项，请选择“舒适型”。'],
+      hints: ['找到车型列表里的“舒适型”，点击一下。', '找“舒适型”。'],
       nextStepId: 'taxi-view-fare',
     },
     {
@@ -114,7 +114,7 @@ export const TAXI_TASK: Task = {
       targetElementId: 'taxi-fare-button',
       expectedAction: 'click',
       successCondition: '页面显示明确标注为演示数据的预估费用。',
-      hints: ['点击“查看预估费用”按钮。', '这里显示的是虚拟价格，不会真的扣款。'],
+      hints: ['点击“查看预估费用”按钮。', '找“查看预估费用”。'],
       nextStepId: 'taxi-confirm-ride',
     },
     {
@@ -124,7 +124,7 @@ export const TAXI_TASK: Task = {
       targetElementId: 'taxi-confirm-button',
       expectedAction: 'click',
       successCondition: '虚拟行程已确认，页面出现查看叫车结果的入口。',
-      hints: ['核对目的地和车型，再点击“确认模拟叫车”。', '这是练习按钮，不会生成真实出行订单。'],
+      hints: ['核对目的地和车型，再点击“确认模拟叫车”。', '核对信息后确认模拟叫车。'],
       nextStepId: 'taxi-view-result',
     },
     {
@@ -134,7 +134,7 @@ export const TAXI_TASK: Task = {
       targetElementId: 'taxi-result-button',
       expectedAction: 'click',
       successCondition: '页面明确显示“模拟叫车成功”，且不生成真实订单或支付。',
-      hints: ['最后点击“查看叫车结果”。', '看到“模拟叫车成功”就说明练习全部完成。'],
+      hints: ['最后点击“查看叫车结果”。', '找“查看叫车结果”。'],
       nextStepId: null,
     },
   ],

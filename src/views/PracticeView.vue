@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AppButton from '@/components/AppButton.vue';
 import { DEMO_TASKS } from '@/tasks';
+import { latestPracticeRecord } from '@/repositories/progressRepository';
 import { usePracticeStore } from '@/stores/practice';
 
 const router = useRouter();
@@ -14,9 +15,12 @@ onMounted(() => {
 
 const hasRecords = computed(() => practice.records.length > 0);
 
-function latestStatus(taskId: string): string {
-  const latest = practice.records.find((record) => record.taskId === taskId);
+function latestStatus(task: (typeof DEMO_TASKS)[number]): string {
+  // 与 loadTask/getLatestActive 口径一致：只按当前任务版本判断状态，
+  // 避免旧版 active 记录显示「继续练习」而实际新开练习。
+  const latest = latestPracticeRecord(practice.records, task.id, task.version);
   if (!latest) return '尚未开始';
+  if (!latest.snapshot) return '上次记录格式不兼容，可重新开始';
   if (latest.snapshot.session.status === 'active') return '上次练习可继续';
   if (latest.snapshot.session.status === 'completed') return '已完成，可再练一次';
   return '上次已退出，可重新开始';
@@ -58,10 +62,10 @@ function latestStatus(taskId: string): string {
           </div>
         </div>
         <p class="mb-3 text-[0.9rem] font-semibold text-sg-primary" data-testid="task-status">
-          {{ latestStatus(task.id) }}
+          {{ latestStatus(task) }}
         </p>
         <AppButton
-          :label="latestStatus(task.id) === '上次练习可继续' ? '继续练习' : '开始模拟练习'"
+          :label="latestStatus(task) === '上次练习可继续' ? '继续练习' : '开始模拟练习'"
           :description="`${task.steps.length} 个步骤 · 模拟练习，不产生真实订单`"
           @activate="router.push(`/practice/${task.id}`)"
         >

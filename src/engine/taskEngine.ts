@@ -1,7 +1,11 @@
 import type { Task, TaskStep } from '@/types/task';
 import type { HintLevel, PracticeSession } from '@/types/session';
 
+/** 旧版无 schemaVersion 的快照属于 v0；仅破坏性变更才需要递增版本。 */
+export const SNAPSHOT_SCHEMA_VERSION = 1 as const;
+
 export interface TaskEngineSnapshot {
+  schemaVersion: typeof SNAPSHOT_SCHEMA_VERSION;
   session: PracticeSession;
   currentStepId: string;
   consecutiveErrors: number;
@@ -46,11 +50,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function hasExactKeys(value: Record<string, unknown>, expectedKeys: string[]): boolean {
-  const actualKeys = Object.keys(value).sort();
-  const expected = [...expectedKeys].sort();
-  return actualKeys.length === expected.length
-    && actualKeys.every((key, index) => key === expected[index]);
+function hasRequiredKeys(value: Record<string, unknown>, expectedKeys: string[]): boolean {
+  return expectedKeys.every((key) => Object.hasOwn(value, key));
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -67,7 +68,7 @@ function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
-function isHintLevel(value: unknown): value is HintLevel {
+export function isHintLevel(value: unknown): value is HintLevel {
   return value === 1 || value === 2 || value === 3;
 }
 
@@ -85,6 +86,7 @@ export function createEngineSession(
   }
 
   return {
+    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     session: {
       id: options.id,
       taskId: task.id,
@@ -93,7 +95,7 @@ export function createEngineSession(
       status: 'active',
       errorCount: 0,
       helpCount: 0,
-      currentHintLevel: options.hintLevel,
+      currentHintLevel: isHintLevel(options.hintLevel) ? options.hintLevel : 1,
     },
     currentStepId: firstStep.id,
     consecutiveErrors: 0,
@@ -182,13 +184,19 @@ export function requestEngineHelp(task: Task, snapshot: TaskEngineSnapshot): Act
   const step = getCurrentStep(task, snapshot);
   const nextSnapshot = copySnapshot(snapshot);
   nextSnapshot.session.helpCount += 1;
-  return result(nextSnapshot, true, step.hints[0] ?? step.instruction);
+  return result(nextSnapshot, true, getStepHint(step, snapshot.session.currentHintLevel));
+}
+
+/** L1 明确分步提示；L2/L3 求助优先使用较短的定位线索。 */
+export function getStepHint(step: TaskStep, level: HintLevel): string {
+  return (level === 1 ? step.hints[0] : step.hints[1]) ?? step.instruction;
 }
 
 export function setEngineHintLevel(
   snapshot: TaskEngineSnapshot,
   level: HintLevel,
 ): TaskEngineSnapshot {
+  if (!isHintLevel(level) || snapshot.session.status !== 'active') return snapshot;
   const nextSnapshot = copySnapshot(snapshot);
   nextSnapshot.session.currentHintLevel = level;
   return nextSnapshot;
@@ -235,10 +243,14 @@ export function restoreEngineSnapshot(
   task: Task,
   value: unknown,
 ): TaskEngineSnapshot | null {
-  if (!isRecord(value) || !hasExactKeys(value, ['session', 'currentStepId', 'consecutiveErrors'])) {
+  if (!isRecord(value) || !hasRequiredKeys(value, ['session', 'currentStepId', 'consecutiveErrors'])) {
     return null;
   }
-  if (!isRecord(value.session) || !hasExactKeys(value.session, [
+  // v0（无版本字段/显式 0）与 v1 的核心字段一致，可以安全迁移；
+  // 已知 schema 允许新增可选字段，未知破坏性版本不猜测、不覆盖原记录。
+  const schemaVersion = Object.hasOwn(value, 'schemaVersion') ? value.schemaVersion : 0;
+  if (schemaVersion !== 0 && schemaVersion !== SNAPSHOT_SCHEMA_VERSION) return null;
+  if (!isRecord(value.session) || !hasRequiredKeys(value.session, [
     'id',
     'taskId',
     'startedAt',
@@ -277,6 +289,7 @@ export function restoreEngineSnapshot(
   }
 
   return {
+    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     session: {
       id: session.id,
       taskId: task.id,
